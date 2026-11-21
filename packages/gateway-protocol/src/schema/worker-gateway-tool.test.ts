@@ -1,16 +1,83 @@
 import { Value } from "typebox/value";
 import { describe, expect, it } from "vitest";
 import { isWorkerTranscriptFrameWithinBudget } from "../worker-transcript-budget.js";
+import { validateWorkerExecApprovalParams } from "./worker-exec-approval.js";
 import {
   AgentToolSurfacePresentationSchema,
   isWorkerGatewayToolFrameWithinBudget,
   WorkerGatewayToolInvokeParamsSchema,
   WorkerGatewayToolResultSchema,
+  validateWorkerGatewayToolInvokeParams,
+  validateWorkerGatewayToolCancelParams,
+  validateWorkerGatewayToolUpdateFrame,
   type WorkerGatewayToolResult,
 } from "./worker-gateway-tool.js";
 import { WORKER_PROTOCOL_MAX_PAYLOAD_BYTES } from "./worker-protocol-primitives.js";
 
 describe("worker Gateway tool transport", () => {
+  it("retains provider call IDs across invoke, cancel, update and approval", () => {
+    for (const length of [1, 256, 257, 458, 512, 1_024, 1_025]) {
+      const toolCallId = "x".repeat(length);
+      const valid = length <= 1_024;
+      const base = { generation: "surface", toolCallId };
+      expect(
+        validateWorkerGatewayToolInvokeParams({ ...base, toolId: "tool", arguments: {} }),
+      ).toBe(valid);
+      expect(validateWorkerGatewayToolCancelParams(base)).toBe(valid);
+      expect(
+        validateWorkerGatewayToolUpdateFrame({
+          type: "event",
+          event: "worker.gatewayTool.update",
+          payload: { ...base, seq: 1, result: { content: [{ type: "text", text: "ok" }] } },
+        }),
+      ).toBe(valid);
+      const binding = {
+        command: "true",
+        execCommand: "true",
+        cwd: "/tmp",
+        environment: "a".repeat(64),
+        pty: false,
+      };
+      expect(
+        validateWorkerExecApprovalParams({
+          operation: "wait",
+          binding,
+          toolCallId,
+          id: "approval",
+        }),
+      ).toBe(valid);
+      expect(
+        validateWorkerExecApprovalParams({
+          operation: "request",
+          binding,
+          toolCallId,
+          id: "approval",
+        }),
+      ).toBe(valid);
+      expect(
+        validateWorkerExecApprovalParams({
+          operation: "review",
+          binding,
+          toolCallId,
+          review: {
+            reason: "approval-required",
+            analysis: { parsed: true, allowlistMatched: false, inlineEval: false },
+          },
+        }),
+      ).toBe(valid);
+    }
+    expect(
+      validateWorkerGatewayToolInvokeParams({
+        generation: "x".repeat(257),
+        toolId: "tool",
+        toolCallId: "call",
+        arguments: {},
+      }),
+    ).toBe(false);
+    expect(
+      validateWorkerGatewayToolCancelParams({ generation: "surface", toolCallId: " padded " }),
+    ).toBe(false);
+  });
   it("transports selectors without silently dropping them or accepting malformed selectors", () => {
     const schema = AgentToolSurfacePresentationSchema.properties.toolSearch;
     const base = { enabled: true, mode: "tools", searchDefaultLimit: 8, maxSearchLimit: 20 };

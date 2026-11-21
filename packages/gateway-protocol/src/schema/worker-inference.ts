@@ -6,6 +6,7 @@ import {
   LiveSequenceSchema,
   LiveTextSchema,
   WorkerIdentifierSchema,
+  WorkerProviderToolCallIdSchema,
   checkWorkerProtocolJson,
   workerMessageSchemas,
   WORKER_TRANSCRIPT_MAX_CONTENT_PARTS,
@@ -213,7 +214,7 @@ const WorkerInferenceStreamEventSchema = Type.Union([
     contentSignature: OptionalInferenceTextSchema,
   }),
   inferenceContentEvent("toolcall_start", {
-    id: WorkerIdentifierSchema,
+    id: WorkerProviderToolCallIdSchema,
     toolName: WorkerIdentifierSchema,
   }),
   inferenceContentEvent("toolcall_delta", { delta: InferenceTextSchema }),

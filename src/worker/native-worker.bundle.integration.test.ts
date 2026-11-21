@@ -25,6 +25,7 @@ import {
 import {
   hashWorkerBundleManifest,
   WORKER_BUNDLE_ARTIFACT_PATHS,
+  WORKER_BUNDLE_CHUNK_PATH_PATTERN,
   workerBundleArchiveRelativePath,
 } from "../shared/worker-bundle-hash.js";
 import { closeOpenClawStateDatabaseForTest } from "../state/openclaw-state-db.js";
@@ -140,7 +141,13 @@ it.skipIf(process.env.TEST_NATIVE_WORKER_BUNDLE !== "1" || process.platform === 
       ignoreTopLevel: new Set(["bootstrap-receipt.json"]),
     });
     expect(hashWorkerBundleManifest(manifest)).toBe(artifact.bundleHash);
-    expect(manifest.map((entry) => entry.path)).toEqual([...WORKER_BUNDLE_ARTIFACT_PATHS]);
+    const paths = manifest.map((entry) => entry.path);
+    expect(paths.filter((name) => !WORKER_BUNDLE_CHUNK_PATH_PATTERN.test(name)).toSorted()).toEqual(
+      [...WORKER_BUNDLE_ARTIFACT_PATHS].toSorted(),
+    );
+    expect(
+      paths.filter((name) => WORKER_BUNDLE_CHUNK_PATH_PATTERN.test(name)).length,
+    ).toBeGreaterThan(0);
 
     gateway = await ComposedGatewayHarness.create(tempDirs.make("oc-bundle-gw-"), artifact);
     await gateway.start();
@@ -151,12 +158,13 @@ it.skipIf(process.env.TEST_NATIVE_WORKER_BUNDLE !== "1" || process.platform === 
     descriptor.assignment.workspaceDir = workspace;
     descriptor.assignment.toolAuthority = { allowedToolNames: ["write"] };
     const effectPath = path.join(workspace, "proof.txt");
+    const longToolCallId = "w".repeat(458);
     const provider = await nativeProviderFixture(
       servers,
       MODEL.model,
       (request) =>
         request === 1
-          ? { name: "write", id: "bundled-write", args: { path: effectPath, content: EFFECT } }
+          ? { name: "write", id: longToolCallId, args: { path: effectPath, content: EFFECT } }
           : FINAL,
       FINAL,
     );
@@ -250,13 +258,13 @@ it.skipIf(process.env.TEST_NATIVE_WORKER_BUNDLE !== "1" || process.platform === 
         content: [
           {
             type: "toolCall",
-            id: "bundled-write",
+            id: longToolCallId,
             name: "write",
             arguments: { path: effectPath, content: EFFECT },
           },
         ],
       },
-      { role: "toolResult", toolName: "write", isError: false },
+      { role: "toolResult", toolCallId: longToolCallId, toolName: "write", isError: false },
       {
         role: "assistant",
         provider: MODEL.provider,

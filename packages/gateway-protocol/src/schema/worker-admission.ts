@@ -26,6 +26,7 @@ import {
   WorkerAdmissionFailureReasonSchema,
   WorkerErrorShapeSchema,
   WorkerIdentifierSchema,
+  WorkerProviderToolCallIdSchema,
   WorkerProtocolCloseReasonSchema,
   WorkerProviderReplayStateSchema,
   WORKER_TRANSCRIPT_MAX_CONTENT_PARTS,
@@ -357,7 +358,7 @@ const WorkerLiveThinkingPayloadSchema = closedObject({
 
 const WorkerLiveToolCommonProperties = {
   name: WorkerIdentifierSchema,
-  toolCallId: WorkerIdentifierSchema,
+  toolCallId: WorkerProviderToolCallIdSchema,
   hideFromChannelProgress: Type.Optional(Type.Literal(true)),
 };
 
@@ -386,7 +387,7 @@ const WorkerLiveApprovalCommonProperties = {
   kind: Type.Enum(["exec", "plugin", "unknown"]),
   title: LiveTextSchema,
   itemId: Type.Optional(WorkerIdentifierSchema),
-  toolCallId: Type.Optional(WorkerIdentifierSchema),
+  toolCallId: Type.Optional(WorkerProviderToolCallIdSchema),
   approvalId: Type.Optional(WorkerIdentifierSchema),
   approvalSlug: Type.Optional(WorkerIdentifierSchema),
   command: OptionalLiveTextSchema,

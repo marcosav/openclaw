@@ -174,6 +174,53 @@ const liveResponse = (value: Record<string, unknown>) =>
   Value.Check(LiveResponse, { type: "res", id: "l", ...value });
 
 describe("worker protocol schemas", () => {
+  it("preserves bounded provider tool call IDs across inference, transcript and live events", () => {
+    for (const length of [1, 256, 257, 458, 512, 1_024, 1_025]) {
+      const id = "x".repeat(length);
+      const valid = length <= 1_024;
+      const message = { ...assistantMessage, content: [{ ...assistantMessage.content[0], id }] };
+      const result = { ...transcriptMessages[2], toolCallId: id };
+      expect(validateCommit(transcriptCommit({ messages: [message, result] }))).toBe(valid);
+      expect(validateInferenceStart(inferenceMessages([message, result]))).toBe(valid);
+      expect(
+        validateInferenceTerminal(
+          inferenceFrame("terminal", { outcome: { type: "done", message } }),
+        ),
+      ).toBe(valid);
+      expect(
+        validateInferenceEvent(
+          inferenceFrame("event", {
+            event: { type: "toolcall_start", contentIndex: 0, id, toolName: "probe" },
+          }),
+        ),
+      ).toBe(valid);
+      expect(validateLive(params(tool("start", { toolCallId: id, args: {} })))).toBe(valid);
+      expect(
+        validateLive(
+          params(
+            event("approval", {
+              phase: "requested",
+              status: "pending",
+              kind: "exec",
+              title: "x",
+              toolCallId: id,
+            }),
+          ),
+        ),
+      ).toBe(valid);
+    }
+    const badId = " padded ";
+    expect(
+      validateInferenceEvent(
+        inferenceFrame("event", {
+          event: { type: "toolcall_start", contentIndex: 0, id: badId, toolName: "probe" },
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      validateLive(params(tool("start", { toolCallId: "call", name: "x".repeat(257), args: {} }))),
+    ).toBe(false);
+  });
   it("accepts the bootstrap receipt and future unique feature names", () => {
     checkAll(validateHandshake, [
       handshake,

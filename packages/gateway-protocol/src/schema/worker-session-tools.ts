@@ -4,6 +4,7 @@ import { PresenceQueryParamsSchema } from "./presence.js";
 import {
   WORKER_PROTOCOL_MAX_PAYLOAD_BYTES,
   WorkerIdentifierSchema,
+  WORKER_PROVIDER_TOOL_CALL_ID_MAX_LENGTH,
   workerResponseSchema,
 } from "./worker-protocol-primitives.js";
 
@@ -30,7 +31,11 @@ export const WORKER_SESSION_TOOLS_PROTOCOL_FEATURE = "worker-session-tools-v1";
 export const WORKER_PORTAL_PROTOCOL_FEATURE = "worker-portal-v1";
 export const WORKER_PRESENCE_PROTOCOL_FEATURE = "worker-presence-v1";
 export const WORKER_SESSION_TOOL_MAX_TEXT_LENGTH = 8 * 1024;
-const WorkerSessionToolCallIdSchema = Type.String({ minLength: 1, maxLength: 256 });
+// The retired decoder historically permitted surrounding whitespace.
+const WorkerSessionToolCallIdSchema = Type.String({
+  minLength: 1,
+  maxLength: WORKER_PROVIDER_TOOL_CALL_ID_MAX_LENGTH,
+});
 
 export const WorkerSessionsSpawnParamsSchema = closedObject({
   ...PlacedSessionsSpawnSchema.properties,

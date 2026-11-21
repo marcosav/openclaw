@@ -88,3 +88,23 @@ it("preserves published worker tool imports without advertising retired RPCs", (
   expectTypeOf<P.WorkerPresenceParams>().toEqualTypeOf<S.WorkerPresenceParams>();
   expectTypeOf<P.WorkerSessionToolResult>().toEqualTypeOf<S.WorkerSessionToolResult>();
 });
+
+it("keeps retired session tool IDs compatible while accepting longer provider IDs", () => {
+  for (const length of [1, 256, 257, 458, 1_024, 1_025]) {
+    const toolCallId = "x".repeat(length);
+    const valid = length <= 1_024;
+    expect(P.validateWorkerSessionsSpawnParams({ toolCallId, task: "run" })).toBe(valid);
+    expect(
+      P.validateWorkerSessionsSendParams({
+        toolCallId,
+        sessionKey: "agent:main:child",
+        message: "continue",
+      }),
+    ).toBe(valid);
+    expect(P.validateWorkerPortalParams({ toolCallId, action: "open", port: 8080 })).toBe(valid);
+    expect(P.validateWorkerPresenceParams({ toolCallId, action: "person", person: "me" })).toBe(
+      valid,
+    );
+  }
+  expect(P.validateWorkerSessionsSpawnParams({ toolCallId: " call ", task: "run" })).toBe(true);
+});

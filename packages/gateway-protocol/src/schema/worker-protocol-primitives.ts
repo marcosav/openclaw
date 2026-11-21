@@ -36,6 +36,13 @@ export const WorkerIdentifierSchema = Type.String({
   pattern: "^\\S(?:.*\\S)?$",
 });
 
+/** Provider IDs are opaque and can exceed internal worker identifiers. */
+export const WORKER_PROVIDER_TOOL_CALL_ID_MAX_LENGTH = 1_024;
+export const WorkerProviderToolCallIdSchema = Type.String({
+  minLength: 1,
+  maxLength: WORKER_PROVIDER_TOOL_CALL_ID_MAX_LENGTH,
+  pattern: "^\\S(?:.*\\S)?$",
+});
 const WorkerFrameIdSchema = Type.String({
   minLength: 1,
   maxLength: WORKER_PROTOCOL_MAX_FRAME_ID_LENGTH,
@@ -223,7 +230,7 @@ export function workerContentSchemas(text: TString, signature: TString, imageDat
     }),
     toolCall: closedObject({
       type: Type.Literal("toolCall"),
-      id: WorkerIdentifierSchema,
+      id: WorkerProviderToolCallIdSchema,
       name: WorkerIdentifierSchema,
       arguments: Type.Record(Type.String({ minLength: 1, maxLength: 256 }), Type.Unknown()),
       thoughtSignature: Type.Optional(signature),
@@ -285,7 +292,7 @@ export function workerMessageSchemas(text: TString, signature: TString, timestam
     }),
     toolResult: closedObject({
       role: Type.Literal("toolResult"),
-      toolCallId: WorkerIdentifierSchema,
+      toolCallId: WorkerProviderToolCallIdSchema,
       toolName: WorkerIdentifierSchema,
       content: Type.Array(textOrImage, { maxItems: WORKER_TRANSCRIPT_MAX_CONTENT_PARTS }),
       details: Type.Optional(Type.Unknown()),
